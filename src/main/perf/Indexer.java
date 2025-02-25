@@ -493,6 +493,7 @@ public final class Indexer {
                 hnswMergeExec);
             } else {
               return new Lucene99HnswVectorsFormat(Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                0,
                 Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
                 hnswThreadsPerMerge,
                 hnswMergeExec);

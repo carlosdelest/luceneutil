@@ -31,6 +31,7 @@ public class KnnIndexerMain {
   public Path docVectorsPath;
   public Path indexPath;
   public int maxConn = 16;
+  public int minConn = 0;
   public int beamWidth = 100;
   public VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   public int dimension;
@@ -49,6 +50,7 @@ public class KnnIndexerMain {
         "docVectorsPath='" + docVectorsPath + '\'' +
         ", indexPath='" + indexPath + '\'' +
         ", maxConn=" + maxConn +
+        ", minConn=" + minConn +
         ", beamWidth=" + beamWidth +
         ", vectorEncoding=" + vectorEncoding +
         ", dimension=" + dimension +
@@ -69,6 +71,7 @@ public class KnnIndexerMain {
           case "-docvectorspath" -> inputs.docVectorsPath = Path.of(args[++i]);
           case "-indexpath" -> inputs.indexPath = Path.of(args[++i]);
           case "-maxconn" -> inputs.maxConn = Integer.parseInt(args[++i]);
+          case "-minconn" -> inputs.minConn = Integer.parseInt(args[++i]);
           case "-beamwidth" -> inputs.beamWidth = Integer.parseInt(args[++i]);
           case "-vectorencoding" -> inputs.vectorEncoding = VectorEncoding.valueOf(args[++i]);
           case "-similarityfunction" ->
@@ -103,7 +106,7 @@ public class KnnIndexerMain {
     ExecutorService exec = Executors.newFixedThreadPool(numMergeThread, new NamedThreadFactory("hnsw-merge"));
 
     new KnnIndexer(inputs.docVectorsPath, inputs.indexPath,
-                   KnnGraphTester.getCodec(inputs.maxConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
+                   KnnGraphTester.getCodec(inputs.maxConn, inputs.minConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
                    numMergeThread, inputs.vectorEncoding,
                    inputs.dimension, inputs.similarityFunction, inputs.numDocs, inputs.docStartIndex, inputs.quiet,
                    inputs.parentJoin, inputs.parentJoinMetaFile, inputs.useBp).createIndex();
@@ -118,6 +121,7 @@ public class KnnIndexerMain {
         "\t -docVectorsPath : path of the file containing vectors for document. <TODO: what format?>\n" +
         "\t -indexPath : path of the folder/dir where the index has to be created.\n" +
         "\t -maxConn : maximum connections per node for HNSW graph\n" +
+        "\t -minConn : minimum connections per node for HNSW graph\n" +
         "\t -beamWidth : beam-width at graph creation time. Same as efConstruction in the HNSW paper.\n" +
         "\t -vectorEncoding: vector encoding. one of constant 'BYTE' or 'FLOAT32'\n" +
         "\t -dimension : dimension / size of the vectors \n" +

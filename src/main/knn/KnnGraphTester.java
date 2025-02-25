@@ -150,6 +150,7 @@ public class KnnGraphTester {
   private long vectorRAMSizeBytes;
   private int beamWidth;
   private int maxConn;
+  private int minConn;
   private boolean quantize;
   private int quantizeBits;
   private boolean quantizeCompress;
@@ -174,6 +175,7 @@ public class KnnGraphTester {
     // set defaults
     numDocs = 1000;
     numQueryVectors = 1000;
+    minConn = 0;
     dim = 256;
     topK = 100;
     numMergeThread = 1;
@@ -268,6 +270,13 @@ public class KnnGraphTester {
           }
           maxConn = Integer.parseInt(args[++iarg]);
           log("maxConn = %d", maxConn);
+          break;
+        case "-minConn":
+          if (iarg == args.length - 1) {
+            throw new IllegalArgumentException("-minConn requires a following number");
+          }
+          minConn = Integer.parseInt(args[++iarg]);
+          log("minConn = %d", maxConn);
           break;
         case "-dim":
           if (iarg == args.length - 1) {
@@ -446,7 +455,7 @@ public class KnnGraphTester {
       reindexTimeMsec = new KnnIndexer(
         docVectorsPath,
         indexPath,
-        getCodec(maxConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
+        getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
         numIndexThreads,
         vectorEncoding,
         dim,
@@ -622,6 +631,7 @@ public class KnnGraphTester {
   private String formatIndexPath(Path docsPath) {
     List<String> suffix = new ArrayList<>();
     suffix.add(Integer.toString(maxConn));
+    suffix.add(Integer.toString(minConn));
     suffix.add(Integer.toString(beamWidth));
     if (useBp) {
       suffix.add("bp");
@@ -663,7 +673,7 @@ public class KnnGraphTester {
   @SuppressForbidden(reason = "Prints stuff")
   private double forceMerge() throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-    iwc.setCodec(getCodec(maxConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress));
+    iwc.setCodec(getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress));
     System.out.println("Force merge index in " + indexPath);
     long startNS = System.nanoTime();
     try (IndexWriter iw = new IndexWriter(FSDirectory.open(indexPath), iwc)) {
@@ -857,13 +867,14 @@ public class KnnGraphTester {
       double reindexSec = reindexTimeMsec / 1000.0;
       System.out.printf(
           Locale.ROOT,
-          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
+          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
           recall,
           totalCpuTimeMS / (float) numQueryVectors,
           numDocs,
           topK,
           fanout,
           maxConn,
+          minConn,
           beamWidth,
           quantizeDesc,
           totalVisited,
@@ -1175,7 +1186,7 @@ public class KnnGraphTester {
     }
   }
 
-  static Codec getCodec(int maxConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress) {
+  static Codec getCodec(int maxConn, int minConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress) {
     if (exec == null) {
       return new Lucene101Codec() {
         @Override
@@ -1187,7 +1198,7 @@ public class KnnGraphTester {
               return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, null);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, beamWidth, numMergeWorker, null);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, null);
           }
         }
       };
@@ -1202,7 +1213,7 @@ public class KnnGraphTester {
               return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, exec);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, beamWidth, numMergeWorker, exec);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, exec);
           }
         }
       };
@@ -1211,7 +1222,7 @@ public class KnnGraphTester {
 
   private static void usage() {
     String error =
-        "Usage: TestKnnGraph [-reindex] [-search {queryfile}|-stats|-check] [-docs {datafile}] [-niter N] [-fanout N] [-maxConn N] [-beamWidth N] [-filterSelectivity N] [-prefilter]";
+        "Usage: TestKnnGraph [-reindex] [-search {queryfile}|-stats|-check] [-docs {datafile}] [-niter N] [-fanout N] [-maxConn N] [-minConn N] [-beamWidth N] [-filterSelectivity N] [-prefilter]";
     System.err.println(error);
     System.exit(1);
   }

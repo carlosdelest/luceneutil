@@ -46,14 +46,16 @@ DO_PROFILING = False
 
 # test parameters. This script will run KnnGraphTester on every combination of these parameters
 PARAMS = {
-    'ndoc': (10_000_000,),
-    #'ndoc': (10000, 100000, 200000, 500000),
+#     'ndoc': (10_000_000,),
+#     'ndoc': (100_000,),
+    'ndoc': (100_000, 1_000_000, 10_000_000),
     #'ndoc': (10000, 100000, 200000, 500000),
     #'ndoc': (2_000_000,),
     #'ndoc': (1_000_000,),
     #'ndoc': (50_000,),
     #'maxConn': (32, 64, 96),
-    'maxConn': (32, ),
+    'maxConn': (32,),
+    'minConn': (0, 4, 8, 16, 32, ),
     #'maxConn': (32,),
     #'beamWidthIndex': (250, 500),
     'beamWidthIndex': (100, ),
@@ -73,11 +75,12 @@ PARAMS = {
     'quantizeBits': (32,),
     #'fanout': (0,),
     'topK': (100,),
-    'bp': ('false', 'true'),
+    'bp': ('false',),
     #'quantizeCompress': (True, False),
     'quantizeCompress': (True,),
     'queryStartIndex': (0,),   # seek to this start vector before searching, to sample different vectors
-    'forceMerge': (True, False)
+#     'forceMerge': (True, False)
+     'forceMerge': (True,)
     #'niter': (10,),
 }
 
@@ -116,8 +119,8 @@ def run_knn_benchmark(checkout, values):
 
     # Cohere dataset
     dim = 768
-    doc_vectors = f"/lucenedata/enwiki/{'cohere-wikipedia'}-docs-{dim}d.vec"
-    query_vectors = f"/lucenedata/enwiki/{'cohere-wikipedia'}-queries-{dim}d.vec"
+    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
+    query_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-queries-{dim}d.vec"
     #parentJoin_meta_file = f"{constants.BASE_DIR}/data/{'cohere-wikipedia'}-metadata.csv"
 
     jfr_output = f'{constants.LOGS_DIR}/knn-perf-test.jfr'
@@ -141,6 +144,7 @@ def run_knn_benchmark(checkout, values):
     all_results = []
     while advance(indexes, values):
         print('\nNEXT:')
+        print(values)
         pv = {}
         args = []
         quantize_bits = None
@@ -221,7 +225,7 @@ def run_knn_benchmark(checkout, values):
     print_fixed_width(all_results, skip_headers)
 
 def print_fixed_width(all_results, columns_to_skip):
-    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tbeamWidth\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
+    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tminConn\tbeamWidth\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
 
     # crazy logic to make everything fixed width so rendering in fixed width font "aligns":
     headers = header.split('\t')
