@@ -976,25 +976,21 @@ public class KnnGraphTester {
     String hash = Integer.toString(Objects.hash(docPath, indexPath, queryPath, numDocs, numQueryVectors, topK, similarityFunction.ordinal(), parentJoin, queryStartIndex, prefilter ? selectivity : 1f, prefilter ? randomSeed : 0f), 36);
     String nnFileName = "nn-" + hash + ".bin";
     Path nnPath = Paths.get(nnFileName);
-    if (Files.exists(nnPath) && isNewer(nnPath, docPath, queryPath)) {
-      System.out.println("  read pre-cached exact match vectors from cache file \"" + nnPath + "\"");
-      return readExactNN(nnPath);
+
+    System.out.println("  now compute brute-force exact KNN matches");
+    long startNS = System.nanoTime();
+    // TODO: enable computing NN from high precision vectors when
+    // checking low-precision recall
+    int[][] nn;
+    if (vectorEncoding.equals(VectorEncoding.BYTE)) {
+      nn = computeExactNNByte(docPath, queryPath, queryStartIndex);
     } else {
-      System.out.println("  now compute brute-force exact KNN matches");
-      long startNS = System.nanoTime();
-      // TODO: enable computing NN from high precision vectors when
-      // checking low-precision recall
-      int[][] nn;
-      if (vectorEncoding.equals(VectorEncoding.BYTE)) {
-        nn = computeExactNNByte(docPath, queryPath, queryStartIndex);
-      } else {
-        nn = computeExactNN(queryPath, queryStartIndex);
-      }
-      writeExactNN(nn, nnPath);
-      long elapsedMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNS); // ns -> ms
-      System.out.printf("took %.3f sec to compute brute-force exact matches\n", elapsedMS / 1000.);
-      return nn;
+      nn = computeExactNN(queryPath, queryStartIndex);
     }
+    writeExactNN(nn, nnPath);
+    long elapsedMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNS); // ns -> ms
+    System.out.printf("took %.3f sec to compute brute-force exact matches\n", elapsedMS / 1000.);
+    return nn;
   }
 
   private boolean isNewer(Path path, Path... others) throws IOException {
