@@ -49,14 +49,14 @@ PARAMS = {
 #     'ndoc': (10_000_000,),
 #     'ndoc': (100_000,),
 #     'ndoc': (10_000,),
-    'ndoc': (10_000, 100_000, 1_000_000,),
+    'ndoc': (10_000, 100_000, 5000_000,),
     #'ndoc': (10000, 100000, 200000, 500000),
     #'ndoc': (2_000_000,),
     #'ndoc': (1_000_000,),
     #'ndoc': (50_000,),
     #'maxConn': (32, 64, 96),
     'maxConn': (32,),
-    'minConn': (0, ),
+#     'minConn': (0, ),
     'minConn': (0, 4, 8, 16, 32, ),
 #     'minConn': (0),
     #'maxConn': (32,),
@@ -148,7 +148,6 @@ def run_knn_benchmark(checkout, values):
     all_results = []
     while advance(indexes, values):
         print('\nNEXT:')
-        print(values)
         pv = {}
         args = []
         quantize_bits = None
@@ -204,7 +203,7 @@ def run_knn_benchmark(checkout, values):
             line = job.stdout.readline()
             if line == '':
                 break
-            sys.stdout.write(line)
+            print(line, end='', flush=True)
             m = re_summary.match(line)
             if m is not None:
                 summary = m.group(1)
