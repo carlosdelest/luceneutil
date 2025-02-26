@@ -490,13 +490,15 @@ public final class Indexer {
                 7,     // bits
                 false, // compress
                 null,  // configuredQuantile
-                hnswMergeExec);
+                hnswMergeExec,
+                      false);
             } else {
               return new Lucene99HnswVectorsFormat(Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
                 0,
                 Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
                 hnswThreadsPerMerge,
-                hnswMergeExec);
+                hnswMergeExec,
+                false);
             }
           }
         };

@@ -154,6 +154,7 @@ public class KnnGraphTester {
   private boolean quantize;
   private int quantizeBits;
   private boolean quantizeCompress;
+  private boolean extendCandidates;
   private int numMergeThread;
   private int numMergeWorker;
   private ExecutorService exec;
@@ -191,6 +192,7 @@ public class KnnGraphTester {
     quantizeCompress = false;
     numIndexThreads = 8;
     queryStartIndex = 0;
+    extendCandidates = false;
   }
 
   private static FileChannel getVectorFileChannel(Path path, int dim, VectorEncoding vectorEncoding) throws IOException {
@@ -225,6 +227,7 @@ public class KnnGraphTester {
     Path docVectorsPath = null, queryPath = null, outputPath = null;
     for (int iarg = 0; iarg < args.length; iarg++) {
       String arg = args[iarg];
+      System.out.println("arg " + iarg + ": " + arg);
       switch (arg) {
         case "-search":
         case "-search-and-stats":
@@ -277,6 +280,10 @@ public class KnnGraphTester {
           }
           minConn = Integer.parseInt(args[++iarg]);
           log("minConn = %d", maxConn);
+          break;
+        case "-extendCandidates":
+          extendCandidates = true;
+          log("extendCandidates");
           break;
         case "-dim":
           if (iarg == args.length - 1) {
@@ -455,7 +462,7 @@ public class KnnGraphTester {
       reindexTimeMsec = new KnnIndexer(
         docVectorsPath,
         indexPath,
-        getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
+        getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates),
         numIndexThreads,
         vectorEncoding,
         dim,
@@ -645,6 +652,9 @@ public class KnnGraphTester {
     if (parentJoin) {
       suffix.add("parentJoin");
     }
+    if (extendCandidates) {
+      suffix.add("extCand");
+    }
     return INDEX_DIR + "/" + docsPath.getFileName() + "-" + String.join("-", suffix) + ".index";
   }
 
@@ -673,7 +683,7 @@ public class KnnGraphTester {
   @SuppressForbidden(reason = "Prints stuff")
   private double forceMerge() throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-    iwc.setCodec(getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress));
+    iwc.setCodec(getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates));
     System.out.println("Force merge index in " + indexPath);
     long startNS = System.nanoTime();
     try (IndexWriter iw = new IndexWriter(FSDirectory.open(indexPath), iwc)) {
@@ -867,7 +877,7 @@ public class KnnGraphTester {
       double reindexSec = reindexTimeMsec / 1000.0;
       System.out.printf(
           Locale.ROOT,
-          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
+          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
           recall,
           totalCpuTimeMS / (float) numQueryVectors,
           numDocs,
@@ -876,6 +886,7 @@ public class KnnGraphTester {
           maxConn,
           minConn,
           beamWidth,
+          extendCandidates,
           quantizeDesc,
           totalVisited,
           reindexSec,
@@ -1186,7 +1197,7 @@ public class KnnGraphTester {
     }
   }
 
-  static Codec getCodec(int maxConn, int minConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress) {
+  static Codec getCodec(int maxConn, int minConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress, boolean extendCandidates) {
     if (exec == null) {
       return new Lucene101Codec() {
         @Override
@@ -1195,10 +1206,10 @@ public class KnnGraphTester {
             if (quantizeBits == 1) {
               return new HnswBitVectorsFormat(maxConn, beamWidth, numMergeWorker, null);
             } else {
-              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, null);
+              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, null, extendCandidates);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, null);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, null, extendCandidates);
           }
         }
       };
@@ -1210,10 +1221,10 @@ public class KnnGraphTester {
             if (quantizeBits == 1) {
               return new HnswBitVectorsFormat(maxConn, beamWidth, numMergeWorker, exec);
             } else {
-              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, exec);
+              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, exec, extendCandidates);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, exec);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, exec, extendCandidates);
           }
         }
       };
@@ -1222,7 +1233,7 @@ public class KnnGraphTester {
 
   private static void usage() {
     String error =
-        "Usage: TestKnnGraph [-reindex] [-search {queryfile}|-stats|-check] [-docs {datafile}] [-niter N] [-fanout N] [-maxConn N] [-minConn N] [-beamWidth N] [-filterSelectivity N] [-prefilter]";
+        "Usage: TestKnnGraph [-reindex] [-search {queryfile}|-stats|-check] [-docs {datafile}] [-niter N] [-fanout N] [-maxConn N] [-minConn N] [-beamWidth N] [-extendCandidates] [-filterSelectivity N] [-prefilter]";
     System.err.println(error);
     System.exit(1);
   }

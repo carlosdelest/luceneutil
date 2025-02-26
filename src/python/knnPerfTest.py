@@ -48,14 +48,17 @@ DO_PROFILING = False
 PARAMS = {
 #     'ndoc': (10_000_000,),
 #     'ndoc': (100_000,),
-    'ndoc': (100_000, 1_000_000, 10_000_000),
+#     'ndoc': (10_000,),
+    'ndoc': (10_000, 100_000, 1_000_000,),
     #'ndoc': (10000, 100000, 200000, 500000),
     #'ndoc': (2_000_000,),
     #'ndoc': (1_000_000,),
     #'ndoc': (50_000,),
     #'maxConn': (32, 64, 96),
     'maxConn': (32,),
+    'minConn': (0, ),
     'minConn': (0, 4, 8, 16, 32, ),
+#     'minConn': (0),
     #'maxConn': (32,),
     #'beamWidthIndex': (250, 500),
     'beamWidthIndex': (100, ),
@@ -80,7 +83,8 @@ PARAMS = {
     'quantizeCompress': (True,),
     'queryStartIndex': (0,),   # seek to this start vector before searching, to sample different vectors
 #     'forceMerge': (True, False)
-     'forceMerge': (True,)
+     'forceMerge': (True,),
+#      'extendCandidates': (False, True,)
     #'niter': (10,),
 }
 
@@ -225,7 +229,7 @@ def run_knn_benchmark(checkout, values):
     print_fixed_width(all_results, skip_headers)
 
 def print_fixed_width(all_results, columns_to_skip):
-    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tminConn\tbeamWidth\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
+    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tminConn\tbeamWidth\textendCandidates\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
 
     # crazy logic to make everything fixed width so rendering in fixed width font "aligns":
     headers = header.split('\t')

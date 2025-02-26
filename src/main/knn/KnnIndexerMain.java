@@ -17,15 +17,14 @@
 
 package knn;
 
-import java.io.IOException;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.NamedThreadFactory;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.NamedThreadFactory;
 
 public class KnnIndexerMain {
   public Path docVectorsPath;
@@ -37,6 +36,7 @@ public class KnnIndexerMain {
   public int dimension;
   public VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.COSINE;
   public int numDocs;
+  public boolean extendCandidates;
 
   public int docStartIndex = 0;
   boolean quiet = false;
@@ -52,6 +52,7 @@ public class KnnIndexerMain {
         ", maxConn=" + maxConn +
         ", minConn=" + minConn +
         ", beamWidth=" + beamWidth +
+        ", extendCandidates=" + extendCandidates +
         ", vectorEncoding=" + vectorEncoding +
         ", dimension=" + dimension +
         ", similarityFunction=" + similarityFunction +
@@ -73,6 +74,7 @@ public class KnnIndexerMain {
           case "-maxconn" -> inputs.maxConn = Integer.parseInt(args[++i]);
           case "-minconn" -> inputs.minConn = Integer.parseInt(args[++i]);
           case "-beamwidth" -> inputs.beamWidth = Integer.parseInt(args[++i]);
+          case "-extendcandidates" -> inputs.extendCandidates = true;
           case "-vectorencoding" -> inputs.vectorEncoding = VectorEncoding.valueOf(args[++i]);
           case "-similarityfunction" ->
               inputs.similarityFunction = VectorSimilarityFunction.valueOf(args[++i].toUpperCase());
@@ -106,7 +108,7 @@ public class KnnIndexerMain {
     ExecutorService exec = Executors.newFixedThreadPool(numMergeThread, new NamedThreadFactory("hnsw-merge"));
 
     new KnnIndexer(inputs.docVectorsPath, inputs.indexPath,
-                   KnnGraphTester.getCodec(inputs.maxConn, inputs.minConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress),
+                   KnnGraphTester.getCodec(inputs.maxConn, inputs.minConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, inputs.extendCandidates),
                    numMergeThread, inputs.vectorEncoding,
                    inputs.dimension, inputs.similarityFunction, inputs.numDocs, inputs.docStartIndex, inputs.quiet,
                    inputs.parentJoin, inputs.parentJoinMetaFile, inputs.useBp).createIndex();
@@ -123,6 +125,7 @@ public class KnnIndexerMain {
         "\t -maxConn : maximum connections per node for HNSW graph\n" +
         "\t -minConn : minimum connections per node for HNSW graph\n" +
         "\t -beamWidth : beam-width at graph creation time. Same as efConstruction in the HNSW paper.\n" +
+        "\t -extendCandidates : Extend candidates with their neighbours.\n" +
         "\t -vectorEncoding: vector encoding. one of constant 'BYTE' or 'FLOAT32'\n" +
         "\t -dimension : dimension / size of the vectors \n" +
         "\t -similarityFunction : similarity function for vector comparison. One of ( EUCLIDEAN, DOT_PRODUCT, COSINE, MAXIMUM_INNER_PRODUCT )\n" +
