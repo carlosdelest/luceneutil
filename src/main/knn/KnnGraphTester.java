@@ -227,7 +227,6 @@ public class KnnGraphTester {
     Path docVectorsPath = null, queryPath = null, outputPath = null;
     for (int iarg = 0; iarg < args.length; iarg++) {
       String arg = args[iarg];
-      System.out.println("arg " + iarg + ": " + arg);
       switch (arg) {
         case "-search":
         case "-search-and-stats":

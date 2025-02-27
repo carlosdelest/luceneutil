@@ -49,16 +49,16 @@ PARAMS = {
 #     'ndoc': (10_000_000,),
 #     'ndoc': (100_000,),
 #     'ndoc': (10_000,),
-    'ndoc': (10_000, 100_000, 5000_000,),
-    #'ndoc': (10000, 100000, 200000, 500000),
+#      'ndoc': (5_000,),
+    'ndoc': (5_000,10_000,100_000),
     #'ndoc': (2_000_000,),
     #'ndoc': (1_000_000,),
     #'ndoc': (50_000,),
     #'maxConn': (32, 64, 96),
     'maxConn': (32,),
-#     'minConn': (0, ),
-    'minConn': (0, 4, 8, 16, 32, ),
-#     'minConn': (0),
+#      'minConn': (24, ),
+     'minConn': (0, 4, 8, 16, 24, 32, ),
+#     'minConn': (24,),
     #'maxConn': (32,),
     #'beamWidthIndex': (250, 500),
     'beamWidthIndex': (100, ),
@@ -84,7 +84,7 @@ PARAMS = {
     'queryStartIndex': (0,),   # seek to this start vector before searching, to sample different vectors
 #     'forceMerge': (True, False)
      'forceMerge': (True,),
-#      'extendCandidates': (False, True,)
+#      'extendCandidates': (True,)
     #'niter': (10,),
 }
 
@@ -123,8 +123,12 @@ def run_knn_benchmark(checkout, values):
 
     # Cohere dataset
     dim = 768
-    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
-    query_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-queries-{dim}d.vec"
+#     doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
+#     query_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-queries-{dim}d.vec"    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
+
+    # Random cluster dataset
+    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-docs-{dim}d.vec"
+    query_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-queries-{dim}d.vec"
     #parentJoin_meta_file = f"{constants.BASE_DIR}/data/{'cohere-wikipedia'}-metadata.csv"
 
     jfr_output = f'{constants.LOGS_DIR}/knn-perf-test.jfr'
