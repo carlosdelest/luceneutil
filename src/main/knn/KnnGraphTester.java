@@ -971,12 +971,6 @@ public class KnnGraphTester {
    * for each of them. Nearest Neighbors are computed using exact match.
    */
   private int[][] getExactNN(Path docPath, Path indexPath, Path queryPath, int queryStartIndex) throws IOException, InterruptedException {
-    // look in working directory for cached nn file
-    String hash = Integer.toString(Objects.hash(docPath, indexPath, queryPath, numDocs, numQueryVectors, topK, similarityFunction.ordinal(), parentJoin, queryStartIndex, prefilter ? selectivity : 1f, prefilter ? randomSeed : 0f), 36);
-    String nnFileName = "nn-" + hash + ".bin";
-    Path nnPath = Paths.get(nnFileName);
-
-    System.out.println("  now compute brute-force exact KNN matches");
     long startNS = System.nanoTime();
     // TODO: enable computing NN from high precision vectors when
     // checking low-precision recall
@@ -986,7 +980,6 @@ public class KnnGraphTester {
     } else {
       nn = computeExactNN(queryPath, queryStartIndex);
     }
-    writeExactNN(nn, nnPath);
     long elapsedMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNS); // ns -> ms
     System.out.printf("took %.3f sec to compute brute-force exact matches\n", elapsedMS / 1000.);
     return nn;

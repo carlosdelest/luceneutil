@@ -43,9 +43,9 @@ def generate_random_embeddings():
                                                  'from HuggingFace Cohere/wikipedia-22-12-en-embeddings')
   parser.add_argument('-n', '--name', default='random-clustered',
                       help='Dataset name, used as a filename prefix for generated files.')
-  parser.add_argument('-d', '--numDocs', default='1_000_000', help='Number of documents')
+  parser.add_argument('-d', '--numDocs', default='500_000', help='Number of documents')
   parser.add_argument('-q', '--numQueries', default='10_000', help='Number of queries')
-  parser.add_argument('-c', '--numClusters', default='20', help='Number of clusters')
+  parser.add_argument('-c', '--numClusters', default='10', help='Number of clusters')
   parser.add_argument('-r', '--clusterRadius', default='0.00001', help='Cluster radius')
   parser.add_argument('-s', '--seed', default='42', help='Random seed to use for reproducibility')
   args = parser.parse_args()
