@@ -37,6 +37,7 @@ public class KnnIndexerMain {
   public VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.COSINE;
   public int numDocs;
   public boolean extendCandidates;
+  public boolean multiQueue;
 
   public int docStartIndex = 0;
   boolean quiet = false;
@@ -53,6 +54,7 @@ public class KnnIndexerMain {
         ", minConn=" + minConn +
         ", beamWidth=" + beamWidth +
         ", extendCandidates=" + extendCandidates +
+        ", multiQueue=" + multiQueue +
         ", vectorEncoding=" + vectorEncoding +
         ", dimension=" + dimension +
         ", similarityFunction=" + similarityFunction +
@@ -75,6 +77,7 @@ public class KnnIndexerMain {
           case "-minconn" -> inputs.minConn = Integer.parseInt(args[++i]);
           case "-beamwidth" -> inputs.beamWidth = Integer.parseInt(args[++i]);
           case "-extendcandidates" -> inputs.extendCandidates = true;
+          case "-multiqueue" -> inputs.multiQueue = true;
           case "-vectorencoding" -> inputs.vectorEncoding = VectorEncoding.valueOf(args[++i]);
           case "-similarityfunction" ->
               inputs.similarityFunction = VectorSimilarityFunction.valueOf(args[++i].toUpperCase());
@@ -108,7 +111,7 @@ public class KnnIndexerMain {
     ExecutorService exec = Executors.newFixedThreadPool(numMergeThread, new NamedThreadFactory("hnsw-merge"));
 
     new KnnIndexer(inputs.docVectorsPath, inputs.indexPath,
-                   KnnGraphTester.getCodec(inputs.maxConn, inputs.minConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, inputs.extendCandidates),
+                   KnnGraphTester.getCodec(inputs.maxConn, inputs.minConn, inputs.beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, inputs.extendCandidates, inputs.multiQueue),
                    numMergeThread, inputs.vectorEncoding,
                    inputs.dimension, inputs.similarityFunction, inputs.numDocs, inputs.docStartIndex, inputs.quiet,
                    inputs.parentJoin, inputs.parentJoinMetaFile, inputs.useBp).createIndex();
@@ -126,6 +129,7 @@ public class KnnIndexerMain {
         "\t -minConn : minimum connections per node for HNSW graph\n" +
         "\t -beamWidth : beam-width at graph creation time. Same as efConstruction in the HNSW paper.\n" +
         "\t -extendCandidates : Extend candidates with their neighbours.\n" +
+        "\t -multiQueue : Use multiple queue algorithm for graph building.\n" +
         "\t -vectorEncoding: vector encoding. one of constant 'BYTE' or 'FLOAT32'\n" +
         "\t -dimension : dimension / size of the vectors \n" +
         "\t -similarityFunction : similarity function for vector comparison. One of ( EUCLIDEAN, DOT_PRODUCT, COSINE, MAXIMUM_INNER_PRODUCT )\n" +

@@ -149,12 +149,13 @@ public class KnnGraphTester {
   // how much RAM searching needs to keep HNSW fully "hot":
   private long vectorRAMSizeBytes;
   private int beamWidth;
+  private boolean extendCandidates;
   private int maxConn;
   private int minConn;
   private boolean quantize;
   private int quantizeBits;
   private boolean quantizeCompress;
-  private boolean extendCandidates;
+  private boolean multiQueue;
   private int numMergeThread;
   private int numMergeWorker;
   private ExecutorService exec;
@@ -193,6 +194,7 @@ public class KnnGraphTester {
     numIndexThreads = 8;
     queryStartIndex = 0;
     extendCandidates = false;
+    multiQueue = false;
   }
 
   private static FileChannel getVectorFileChannel(Path path, int dim, VectorEncoding vectorEncoding) throws IOException {
@@ -259,6 +261,14 @@ public class KnnGraphTester {
           beamWidth = Integer.parseInt(args[++iarg]);
           log("beamWidth = %d", beamWidth);
           break;
+        case "-extendCandidates":
+          extendCandidates = true;
+          log("extendCandidates");
+          break;
+        case "-multiQueue":
+          multiQueue = true;
+          log("multiQueue");
+          break;
         case "-queryStartIndex":
           if (iarg == args.length - 1) {
             throw new IllegalArgumentException("-queryStartIndex requires a following number");
@@ -279,10 +289,6 @@ public class KnnGraphTester {
           }
           minConn = Integer.parseInt(args[++iarg]);
           log("minConn = %d", maxConn);
-          break;
-        case "-extendCandidates":
-          extendCandidates = true;
-          log("extendCandidates");
           break;
         case "-dim":
           if (iarg == args.length - 1) {
@@ -461,7 +467,7 @@ public class KnnGraphTester {
       reindexTimeMsec = new KnnIndexer(
         docVectorsPath,
         indexPath,
-        getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates),
+        getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates, multiQueue),
         numIndexThreads,
         vectorEncoding,
         dim,
@@ -654,6 +660,9 @@ public class KnnGraphTester {
     if (extendCandidates) {
       suffix.add("extCand");
     }
+    if (multiQueue) {
+      suffix.add("multiQueue");
+    }
     return INDEX_DIR + "/" + docsPath.getFileName() + "-" + String.join("-", suffix) + ".index";
   }
 
@@ -682,7 +691,7 @@ public class KnnGraphTester {
   @SuppressForbidden(reason = "Prints stuff")
   private double forceMerge() throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-    iwc.setCodec(getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates));
+    iwc.setCodec(getCodec(maxConn, minConn, beamWidth, exec, numMergeWorker, quantize, quantizeBits, quantizeCompress, extendCandidates, multiQueue));
     System.out.println("Force merge index in " + indexPath);
     long startNS = System.nanoTime();
     try (IndexWriter iw = new IndexWriter(FSDirectory.open(indexPath), iwc)) {
@@ -876,7 +885,7 @@ public class KnnGraphTester {
       double reindexSec = reindexTimeMsec / 1000.0;
       System.out.printf(
           Locale.ROOT,
-          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
+          "SUMMARY: %5.3f\t%5.3f\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%.2f\t%.2f\t%.2f\t%d\t%.2f\t%.2f\t%s\t%5.3f\t%5.3f\n",
           recall,
           totalCpuTimeMS / (float) numQueryVectors,
           numDocs,
@@ -886,6 +895,7 @@ public class KnnGraphTester {
           minConn,
           beamWidth,
           extendCandidates,
+          multiQueue,
           quantizeDesc,
           totalVisited,
           reindexSec,
@@ -1185,7 +1195,7 @@ public class KnnGraphTester {
     }
   }
 
-  static Codec getCodec(int maxConn, int minConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress, boolean extendCandidates) {
+  static Codec getCodec(int maxConn, int minConn, int beamWidth, ExecutorService exec, int numMergeWorker, boolean quantize, int quantizeBits, boolean quantizeCompress, boolean extendCandidates, boolean multiQueue) {
     if (exec == null) {
       return new Lucene101Codec() {
         @Override
@@ -1194,10 +1204,10 @@ public class KnnGraphTester {
             if (quantizeBits == 1) {
               return new HnswBitVectorsFormat(maxConn, beamWidth, numMergeWorker, null);
             } else {
-              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, null, extendCandidates);
+              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, null, extendCandidates, multiQueue);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, null, extendCandidates);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, null, extendCandidates, multiQueue);
           }
         }
       };
@@ -1209,10 +1219,10 @@ public class KnnGraphTester {
             if (quantizeBits == 1) {
               return new HnswBitVectorsFormat(maxConn, beamWidth, numMergeWorker, exec);
             } else {
-              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, exec, extendCandidates);
+              return new Lucene99HnswScalarQuantizedVectorsFormat(maxConn, beamWidth, numMergeWorker, quantizeBits, quantizeCompress, null, exec, extendCandidates, multiQueue);
             }
           } else {
-            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, exec, extendCandidates);
+            return new Lucene99HnswVectorsFormat(maxConn, minConn, beamWidth, numMergeWorker, exec, extendCandidates, multiQueue);
           }
         }
       };
