@@ -51,15 +51,15 @@ PARAMS = {
 #     'ndoc': (10_000,),
 #      'ndoc': (5_000,),
 #     'ndoc': (5_000,10_000,100_000, ),
-     'ndoc': (500_000, ),
+     'ndoc': (100_000, ),
     #'ndoc': (2_000_000,),
     #'ndoc': (1_000_000,),
     #'ndoc': (50_000,),
     #'maxConn': (32, 64, 96),
-    'maxConn': (16,),
+    'maxConn': (32,),
 #      'minConn': (24, ),
 #      'minConn': (0, 4, 8, 16, 24, 32, ),
-      'minConn': (0, 4, 8, 12, 16, ),
+      'minConn': (0, 16, 32,),
     #'maxConn': (32,),
     #'beamWidthIndex': (250, 500),
     'beamWidthIndex': (100, ),
@@ -85,7 +85,9 @@ PARAMS = {
     'queryStartIndex': (0,),   # seek to this start vector before searching, to sample different vectors
 #     'forceMerge': (True, False)
      'forceMerge': (True,),
-      'extendCandidates': (False, True,)
+    'extendCandidates': (False,True,),
+    'multiQueue': (False,True,)
+
     #'niter': (10,),
 }
 
@@ -123,13 +125,21 @@ def run_knn_benchmark(checkout, values):
     #query_vectors = '/d/electronics_query_vectors.bin'
 
     # Cohere dataset
-    dim = 768
-#    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
-#    query_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-queries-{dim}d.vec"
+    # dim = 768
+#     doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-docs-{dim}d.vec"
+#     query_vectors = f"/Users/cdelgado/dev/workspace/data/{'cohere-wikipedia'}-queries-{dim}d.vec"
 
     # Random cluster dataset
-    doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-docs-{dim}d.vec"
-    query_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-queries-{dim}d.vec"
+    # doc_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-docs-{dim}d.vec"
+    # query_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-queries-{dim}d.vec"
+
+    # TODO Iterate on datasets similar to the above
+    # Quora E5-small
+    dim = 384
+    query_vectors = "/Users/cdelgado/dev/workspace/data/queries-quora-E5-small.fvec.vec"
+    doc_vectors = "/Users/cdelgado/dev/workspace/data/corpus-quora-E5-small.fvec.vec"
+    # query_vectors = f"/Users/cdelgado/dev/workspace/data/{'random-clustered'}-queries-{dim}d.vec"
+
     #parentJoin_meta_file = f"{constants.BASE_DIR}/data/{'cohere-wikipedia'}-metadata.csv"
 
     jfr_output = f'{constants.LOGS_DIR}/knn-perf-test.jfr'
@@ -233,7 +243,7 @@ def run_knn_benchmark(checkout, values):
     print_fixed_width(all_results, skip_headers)
 
 def print_fixed_width(all_results, columns_to_skip):
-    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tminConn\tbeamWidth\textendCandidates\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
+    header = 'recall\tlatency (ms)\tnDoc\ttopK\tfanout\tmaxConn\tminConn\tbeamWidth\textendCandidates\tmultiQueue\tquantized\tvisited\tindex s\tindex docs/s\tforce merge s\tnum segments\tindex size (MB)\tselectivity\tfilterType\tvec disk (MB)\tvec RAM (MB)'
 
     # crazy logic to make everything fixed width so rendering in fixed width font "aligns":
     headers = header.split('\t')
