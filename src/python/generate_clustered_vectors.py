@@ -18,6 +18,9 @@
 import argparse
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.decomposition import PCA
 
 import localconstants
 
@@ -34,37 +37,38 @@ For help:
 python src/python/infer_token_vectors_cohere.py -h
 """
 
-DATASET_PATH = 'Cohere/wikipedia-22-12-en-embeddings'
-DIMENSIONS = 768
 
 def generate_random_embeddings():
-  parser = argparse.ArgumentParser(prog='Fetch Wikipedia Cohere Embeddings',
-                                     description='Generate document and query vectors for the vector search task '
-                                                 'from HuggingFace Cohere/wikipedia-22-12-en-embeddings')
+  parser = argparse.ArgumentParser(prog='Generate random clustered embeddings',
+                                     description='Generate clustered document and query vectors')
   parser.add_argument('-n', '--name', default='random-clustered',
                       help='Dataset name, used as a filename prefix for generated files.')
   parser.add_argument('-d', '--numDocs', default='500_000', help='Number of documents')
   parser.add_argument('-q', '--numQueries', default='10_000', help='Number of queries')
+  parser.add_argument('-i', '--numDims', default='768', help='Number of dimensions')
   parser.add_argument('-c', '--numClusters', default='10', help='Number of clusters')
   parser.add_argument('-r', '--clusterRadius', default='0.00001', help='Cluster radius')
   parser.add_argument('-s', '--seed', default='42', help='Random seed to use for reproducibility')
+  parser.add_argument('-p', '--print', default=False, help='Just prints vectors instead of writing to file')
   args = parser.parse_args()
   print('Fetching Cohere embeddings with the following args: %s' % args)
 
-  doc_file = f"{localconstants.BASE_DIR}/data/{args.name}-docs-{DIMENSIONS}d.vec"
-  query_file = f"{localconstants.BASE_DIR}/data/{args.name}-queries-{DIMENSIONS}d.vec"
+  embedding_dims = int(args.numDims)
+  doc_file = f"{localconstants.BASE_DIR}/data/{args.name}-docs-{embedding_dims}d.vec"
+  query_file = f"{localconstants.BASE_DIR}/data/{args.name}-queries-{embedding_dims}d.vec"
   num_docs = int(args.numDocs)
   num_queries = int(args.numQueries)
   num_clusters = int(args.numClusters)
   cluster_radius = float(args.clusterRadius)
+  just_print = args.print == 'True'
   seed = int(args.seed)
 
-  for name in (doc_file, query_file):
-    print(f'checking if file:{name} exists...')
-    if os.path.exists(name):
-        raise RuntimeError(f'please remove {name} first')
+  if not just_print:
+    for name in (doc_file, query_file):
+      print(f'checking if file:{name} exists...')
+      if os.path.exists(name):
+          raise RuntimeError(f'please remove {name} first')
 
-  embedding_dims = DIMENSIONS
   print(f"embeddings dims: {embedding_dims}")
 
   # do this in windows, else the RAM usage is crazy (OOME even with 256
@@ -80,7 +84,11 @@ def generate_random_embeddings():
 
   # Generate random cluster centers
   cluster_centers = np.random.rand(num_clusters, embedding_dims)
+  if just_print:
+    print("Cluster Centers:")
+    print(cluster_centers)
 
+  # TODO Create a separate visualization program to reuse with other datasets
 
   # Generate Document Embeddings for clusters
   while doc_upto < num_docs:
@@ -97,8 +105,28 @@ def generate_random_embeddings():
     embs = np.array(ds_embs, dtype=np.float32)
     print(f'embs: {embs.dtype} {embs.size} {embs.itemsize} {embs.shape}')
 
-    print(f"saving docs[{doc_upto}:{next_doc_upto}] of shape: {embs.shape} to file")
-    with open(doc_file, "ab") as out_f:
+    if just_print:
+      print("Embeddings:")
+      print(embs)
+
+      pca = PCA(n_components=2)
+      embs_2d = pca.fit_transform(embs)
+
+      # Scatter plot with color-coded clusters
+      # labels = sns.color_palette()
+      plt.figure(figsize=(8, 6))
+      # sns.scatterplot(x=embs_2d[:, 0], y=embs_2d[:, 1], hue=labels, palette="viridis", alpha=0.7)
+      palette = sns.color_palette("pastel", n_colors=num_clusters)
+      plt.scatter(embs_2d[:, 0], embs_2d[:, 1], c=[palette[c] for c in cluster_indices])
+      plt.title("UMAP Visualization of High-Dimensional Embeddings")
+      plt.xlabel("UMAP Component 1")
+      plt.ylabel("UMAP Component 2")
+      plt.legend(title="Cluster")
+      plt.show()
+
+    else:
+      print(f"saving docs[{doc_upto}:{next_doc_upto}] of shape: {embs.shape} to file")
+      with open(doc_file, "ab") as out_f:
         embs.tofile(out_f)
 
     doc_upto = next_doc_upto
@@ -107,20 +135,25 @@ def generate_random_embeddings():
   embs_queries = np.random.rand(num_queries, embedding_dims)
   embs_queries = np.array(embs_queries, dtype=np.float32)
 
-  print(f"saving queries of shape: {embs_queries.shape} to file")
-  with open(query_file, "w") as out_f_queries:
-      embs_queries.tofile(out_f_queries)
+  if just_print:
+    print("Queries:")
+    print(embs_queries)
 
-  ### check saved datasets
-  embs_docs = np.fromfile(doc_file, dtype=np.float32)
-  embs_docs = embs_docs.reshape(num_docs, embedding_dims)
-  print(f"reading docs of shape: {embs_docs.shape}")
-  print(f'{embs_docs[0]}')
+  else:
+    print(f"saving queries of shape: {embs_queries.shape} to file")
+    with open(query_file, "w") as out_f_queries:
+        embs_queries.tofile(out_f_queries)
 
-  embs_queries = np.fromfile(query_file, dtype=np.float32)
-  embs_queries = embs_queries.reshape(num_queries, embedding_dims)
-  print(f"reading queries shape: {embs_queries.shape}")
-  print(f'{embs_queries[0]}')
+    ### check saved datasets
+    embs_docs = np.fromfile(doc_file, dtype=np.float32)
+    embs_docs = embs_docs.reshape(num_docs, embedding_dims)
+    print(f"reading docs of shape: {embs_docs.shape}")
+    print(f'{embs_docs[0]}')
+
+    embs_queries = np.fromfile(query_file, dtype=np.float32)
+    embs_queries = embs_queries.reshape(num_queries, embedding_dims)
+    print(f"reading queries shape: {embs_queries.shape}")
+    print(f'{embs_queries[0]}')
 
 if __name__ == '__main__':
   generate_random_embeddings()
